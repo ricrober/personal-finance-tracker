@@ -10,6 +10,11 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     VitePWA({
       registerType: 'prompt',
+      workbox: {
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,avif}',
+        ],
+      },
       manifest: {
         name: 'Hello Notes',
         short_name: 'Notes',
