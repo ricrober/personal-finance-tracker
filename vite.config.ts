@@ -16,9 +16,9 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Hello Notes',
-        short_name: 'Notes',
-        description: 'A simple offline-first notes application.',
+        name: 'Personal Finance Tracker',
+        short_name: 'PFT',
+        description: 'A simple offline-first personal finance application.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
