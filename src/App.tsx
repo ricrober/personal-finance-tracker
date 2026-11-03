@@ -2,7 +2,11 @@ import { useState, type SubmitEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { TrashIcon } from '@heroicons/react/24/outline';
+import DeleteExpenseDialog from './components/expenses/DeleteExpenseDialog';
+
+const currencyFormatter = new Intl.NumberFormat('es-MX', {
   style: 'currency',
   currency: 'MXN',
 });
@@ -28,13 +32,13 @@ function AddExpenseForm() {
 
     try {
       setIsSaving(true);
-      setError('');
+      setError("");
 
       await db.expenses.add({ amountInMinorUnits });
 
-      setAmount('');
+      setAmount("");
     } catch (error) {
-      console.log('Error saving expense:', error);
+      console.error('Error saving expense:', error);
       setError('Could not save the expense. Please try again.');
     } finally {
       setIsSaving(false);
@@ -42,30 +46,47 @@ function AddExpenseForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label htmlFor="enter-expense">Expense:</label>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <fieldset className="fieldset">
+        <legend className="fieldset-legend">Expense amount</legend>
+        <input
+          className="input input-bordered w-full"
+          id="enter-expense"
+          type="number"
+          min="0.01"
+          step="0.01" 
+          required
+          value={amount}
+          placeholder="0.00"
+          onChange={event => setAmount(event.target.value)}
+        />
+      </fieldset>
 
-      <input
-        id="enter-expense"
-        type="number"
-        min="0.01"
-        step="0.01" 
-        required
-        value={amount}
-        onChange={event => setAmount(event.target.value)}
-      />
+      <div className="flex justify-end">
+        <button
+          className="btn btn-primary w-full sm:w-auto"
+          type="submit"
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Add Expense'}
+        </button>
+      </div>
 
-      <button type="submit" disabled={isSaving}>
-        {isSaving ? 'Saving...' : 'Add Expense'}
-      </button>
-
-      {error && <p role='alert'>{error}</p>}
+      {error && (
+        <div className="alert alert-error" role='alert'>
+          {error}
+        </div>
+      )}
     </form>
   );
 }
 
 function ExpensesList() {
   const expenses = useLiveQuery(() => db.expenses.orderBy('id').reverse().toArray(), []);
+
+  const [expenseToDelete, setExpenseToDelete] = useState<number|null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   if (expenses === undefined) {
     return <p>Loading expenses...</p>
@@ -75,27 +96,101 @@ function ExpensesList() {
     return <p>No expenses recorded yet.</p>
   }
 
+  async function confirmDelete() {
+    if (expenseToDelete === null || isDeleting) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeleteError('');
+
+      await db.expenses.delete(expenseToDelete);
+
+      setExpenseToDelete(null);
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      setDeleteError('Could not delete the expense. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
-    <ul>
-      {expenses.map(expense => (
-        <li key={expense.id}>
-          {currencyFormatter.format(expense.amountInMinorUnits / 100)}
-        </li>
-      ))}
-    </ul>
+    <section>
+      <ul className="list bg-base-100 rounded-box shadow-sm">
+        {expenses.map(expense => (
+          <li className="list-row flex items-center" key={expense.id}>
+            <div className="flex-1 font-medium tabular-nums">
+              {currencyFormatter.format(expense.amountInMinorUnits / 100)}
+            </div>
+
+            <button
+              className="btn btn-square btn-ghost"
+              type="button"
+              aria-label="Edit expense amount"
+            >
+              <PencilSquareIcon className="size-5" aria-hidden="true" />
+            </button>
+
+            <button
+              className="btn btn-square btn-ghost text-error"
+              type="button"
+              aria-label="Delete expense"
+              onClick={() => {
+                setExpenseToDelete(Number(expense.id));
+              }}
+            >
+              <TrashIcon className="size-5" aria-hidden="true" />
+            </button>  
+          </li>
+        ))}
+      </ul>
+
+      <DeleteExpenseDialog
+        isOpen={expenseToDelete !== null}
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => setExpenseToDelete(null)}
+      />
+    </section>
   );
 }
 
 function App() {
   return (
-    <main>
-      <h1>Personal Finance Tracker</h1>
+    <main className="min-h-dvh bg-base-200 px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-xl">
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body gap-6">
+            <header>
+              <h1 className="text-2xl font-bold text-primary">
+                Personal Finance Tracker
+              </h1>
+            </header>
+            <section aria-labelledby="add-expense-heading">
+              <h2
+                id="add-expense-heading"
+                className="text-lg font-semibold mb-3"
+              >
+                Add Expense
+              </h2>
+              <AddExpenseForm />
+            </section>
+            <section aria-labelledby="expenses-heading">
+              <h2
+                id="expenses-heading"
+                className="text-lg font-semibold mb-3"
+              >
+                Expenses
+              </h2>
 
-      <h2>Add Expense</h2>
-      <AddExpenseForm />
-
-      <h2>Expenses List</h2>
-      <ExpensesList />
+              <ExpensesList />
+            </section>
+          </div>
+        </div>
+      </div>
     </main>
   )
 }
