@@ -2,8 +2,8 @@ import { useState, type SubmitEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { TrashIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+
 import DeleteExpenseDialog from './components/expenses/DeleteExpenseDialog';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
@@ -13,6 +13,7 @@ const currencyFormatter = new Intl.NumberFormat('es-MX', {
 
 function AddExpenseForm() {
   const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -30,13 +31,33 @@ function AddExpenseForm() {
       (parsedAmount + Number.EPSILON) * 100
     );
 
+    if (
+      !Number.isSafeInteger(amountInMinorUnits) ||
+      amountInMinorUnits <= 0
+    ) {
+      setError('Please enter a valid expense amount');
+      return;
+    }
+
+    const normalizedDescription = description.trim();
+
+    if (!normalizedDescription) {
+      setError('Please enter an expense description');
+      return;
+    }
+
     try {
       setIsSaving(true);
-      setError("");
+      setError('');
 
-      await db.expenses.add({ amountInMinorUnits });
+      await db.expenses.add({
+        occurredAt: new Date(),
+        description: normalizedDescription,
+        amountInMinorUnits,
+      });
 
-      setAmount("");
+      setAmount('');
+      setDescription('');
     } catch (error) {
       console.error('Error saving expense:', error);
       setError('Could not save the expense. Please try again.');
@@ -59,6 +80,20 @@ function AddExpenseForm() {
           value={amount}
           placeholder="0.00"
           onChange={event => setAmount(event.target.value)}
+        />
+      </fieldset>
+
+      <fieldset className="fieldset">
+        <legend className="fieldset-legend">Expense description</legend>
+        <input
+          className="input input-bordered w-full"
+          id="enter-expense-description"
+          type="text"
+          maxLength={100}
+          required
+          value={description}
+          placeholder="Description"
+          onChange={event => setDescription(event.target.value)}
         />
       </fieldset>
 
@@ -122,7 +157,9 @@ function ExpensesList() {
         {expenses.map(expense => (
           <li className="list-row flex items-center" key={expense.id}>
             <div className="flex-1 font-medium tabular-nums">
+              <p>{expense.description}</p>
               {currencyFormatter.format(expense.amountInMinorUnits / 100)}
+              <p className='text-sm text-secondary-content'>{expense.occurredAt.toLocaleString()}</p>
             </div>
 
             <button
@@ -138,7 +175,8 @@ function ExpensesList() {
               type="button"
               aria-label="Delete expense"
               onClick={() => {
-                setExpenseToDelete(Number(expense.id));
+                if (expense.id !== undefined)
+                  setExpenseToDelete(expense.id);
               }}
             >
               <TrashIcon className="size-5" aria-hidden="true" />
