@@ -22,6 +22,13 @@ export default function AddExpenseDialog({
 
         if (isOpen && !dialog.open) {
             dialog.showModal();
+
+            const amountInput = dialog.querySelector<HTMLInputElement>('#enter-expense');
+            if (amountInput) {
+                requestAnimationFrame(() => {
+                    amountInput.focus();
+                });
+            }
         } else if (!isOpen && dialog.open) {
             dialog.close();
         }

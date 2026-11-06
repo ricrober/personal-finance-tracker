@@ -65,6 +65,13 @@ export default function AddExpenseForm({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        type="datetime-local"
+        className="input input-bordered w-full"
+        value={new Date().toISOString().slice(0, 16)}
+        readOnly
+      />
+
       <fieldset className="fieldset">
         <legend className="fieldset-legend">Expense amount</legend>
         <input
